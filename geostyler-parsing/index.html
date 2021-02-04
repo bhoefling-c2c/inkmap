@@ -1,0 +1,209 @@
+<html lang="en"><head><title>inkmap demo page</title><link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous"/><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400&family=PT+Sans:wght@400;700&display=swap" rel="stylesheet"/><script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script><script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.4.1/styles/zenburn.min.css"/><script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.4.1/highlight.min.js"></script></head><style>body {
+      font-family: 'PT Sans', sans-serif;
+    }
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      font-family: 'Montserrat', sans-serif;
+    }</style><body><div class="container mb-5" style="width: 960px"><h1 class="mt-5"><strong>inkmap</strong><br/><span class="mt-2" style="font-size: 20px">a library for generating high-quality, printable maps.</span></h1><div class="mt-5" id="example-01"><p>Give <strong>inkmap</strong> a JSON spec and it will use it to generate a PNG image in the background.</p><ul class="nav nav-tabs"><li class="nav-item"><a class="nav-link active" data-toggle="tab" href=".example-01-result">Result</a></li><li class="nav-item"><a class="nav-link" data-toggle="tab" href=".example-01-source">Source</a></li></ul><div class="tab-content mt-2"><div class="tab-pane example-01-result show active"><div class="row align-items-center"><print-spec class="col-8" editable="true"></print-spec><custom-button class="col-3">Generate!</custom-button></div></div><div class="tab-pane example-01-source"><pre class="rounded small"><code class="js">import { downloadBlob, print } from &#39;inkmap&#39;;
+
+const root = document.getElementById(&#39;example-01&#39;);
+const btn = /** @type {CustomButton} */ root.querySelector(&#39;custom-button&#39;);
+const spec = /** @type {PrintSpec} */ root.querySelector(&#39;print-spec&#39;);
+
+btn.addEventListener(&#39;click&#39;, async () =&gt; {
+  // display the loading spinner
+  btn.working = true;
+
+  // create a job, get a promise that resolves when the job is finished
+  const blob = await print(spec.value);
+
+  // hide the loading spinner
+  btn.working = false;
+
+  // download the result
+  const filename = `inkmap-${new Date().toISOString().substr(0, 10)}.png`;
+  downloadBlob(blob, filename);
+});
+</code></pre></div></div></div><div class="mt-5" id="example-02"><h2>Showing progress</h2><p><strong>inkmap</strong> also enables finer monitoring by making the job status observable.</p><ul class="nav nav-tabs"><li class="nav-item"><a class="nav-link active" data-toggle="tab" href=".example-02-result">Result</a></li><li class="nav-item"><a class="nav-link" data-toggle="tab" href=".example-02-source">Source</a></li></ul><div class="tab-content mt-2"><div class="tab-pane example-02-result show active"><div class="row align-items-center"><print-spec class="col-8" editable="false"></print-spec><div class="col-3"><custom-button>Generate!</custom-button><custom-progress></custom-progress></div></div></div><div class="tab-pane example-02-source"><pre class="rounded small"><code class="js">import { downloadBlob, getJobStatus, queuePrint } from &#39;inkmap&#39;;
+
+const root = document.getElementById(&#39;example-02&#39;);
+const btn = /** @type {CustomButton} */ root.querySelector(&#39;custom-button&#39;);
+const bar = /** @type {CustomProgress} */ root.querySelector(&#39;custom-progress&#39;);
+const spec = /** @type {PrintSpec} */ root.querySelector(&#39;print-spec&#39;);
+
+btn.addEventListener(&#39;click&#39;, async () =&gt; {
+  // display the loading spinner
+  btn.working = true;
+
+  // display the job progress
+  bar.progress = 0;
+  bar.status = &#39;pending&#39;;
+
+  // create a job, get a promise that resolves with the job id
+  const jobId = await queuePrint(spec.value);
+
+  getJobStatus(jobId).subscribe((printStatus) =&gt; {
+    // update the job progress
+    bar.progress = printStatus.progress;
+    bar.status = printStatus.status;
+
+    // job is finished
+    if (printStatus.progress === 1) {
+      // hide the loading spinner
+      btn.working = false;
+
+      // download the result
+      const filename = `inkmap-${new Date().toISOString().substr(0, 10)}.png`;
+      downloadBlob(printStatus.imageBlob, filename);
+    }
+  });
+});
+</code></pre></div></div></div><div class="mt-5" id="example-04"><h2>Monitoring multiple jobs</h2><p>Multiple jobs can be monitored at once through a long lived observable.</p><ul class="nav nav-tabs"><li class="nav-item"><a class="nav-link active" data-toggle="tab" href=".example-04-result">Result</a></li><li class="nav-item"><a class="nav-link" data-toggle="tab" href=".example-04-source">Source</a></li></ul><div class="tab-content mt-2"><div class="tab-pane example-04-result show active"><div class="row align-items-center"><print-spec class="col-8" editable="false"></print-spec><div class="col-3"><custom-button>Add to the queue</custom-button><custom-progresses></custom-progresses></div></div></div><div class="tab-pane example-04-source"><pre class="rounded small"><code class="js">import { getJobsStatus, queuePrint } from &#39;inkmap&#39;;
+import { tap } from &#39;rxjs/operators&#39;;
+import { downloadBlob, getJobStatus } from &#39;../../src/main&#39;;
+
+const root = document.getElementById(&#39;example-04&#39;);
+const btn = /** @type {CustomButton} */ root.querySelector(&#39;custom-button&#39;);
+const bars = /** @type {CustomProgresses} */ root.querySelector(
+  &#39;custom-progresses&#39;
+);
+const spec = /** @type {PrintSpec} */ root.querySelector(&#39;print-spec&#39;);
+
+// subscribe to the long-running observable
+// beware of managing the unsubscription
+getJobsStatus().subscribe((jobs) =&gt; {
+  bars.jobsStatus = jobs;
+});
+
+btn.addEventListener(&#39;click&#39;, async () =&gt; {
+  // create a job, get a promise that resolves with the job id
+  const jobId = await queuePrint(spec.value);
+
+  getJobStatus(jobId).subscribe((printStatus) =&gt; {
+    // job is finished
+    if (printStatus.progress === 1) {
+      // download the result
+      const filename = `inkmap-${jobId}-${new Date()
+        .toISOString()
+        .substr(0, 10)}.png`;
+      downloadBlob(printStatus.imageBlob, filename);
+    }
+  });
+});
+</code></pre></div></div></div><div class="mt-5" id="example-05"><h2>Printing to PDF</h2><p><strong>inkmap</strong> jobs give back a blob which can be inserted into a PDF.</p><ul class="nav nav-tabs"><li class="nav-item"><a class="nav-link active" data-toggle="tab" href=".example-05-result">Result</a></li><li class="nav-item"><a class="nav-link" data-toggle="tab" href=".example-05-source">Source</a></li></ul><div class="tab-content mt-2"><div class="tab-pane example-05-result show active"><div class="row align-items-center"><print-spec class="col-8" editable="false"></print-spec><custom-button class="col-3">Generate!</custom-button></div></div><div class="tab-pane example-05-source"><pre class="rounded small"><code class="js">import { print } from &#39;inkmap&#39;;
+import { jsPDF } from &#39;jspdf&#39;;
+
+const root = document.getElementById(&#39;example-05&#39;);
+const btn = /** @type {CustomButton} */ root.querySelector(&#39;custom-button&#39;);
+const spec = /** @type {PrintSpec} */ root.querySelector(&#39;print-spec&#39;);
+
+btn.addEventListener(&#39;click&#39;, async () =&gt; {
+  // display the loading spinner
+  btn.working = true;
+
+  // create a job, get a promise that resolves when the job is finished
+  const blob = await print(spec.value);
+
+  // hide the loading spinner
+  btn.working = false;
+
+  // convert the result into a Data URL
+  const reader = new FileReader();
+  reader.readAsDataURL(blob);
+  reader.onloadend = function () {
+    const imgData = reader.result;
+
+    // add the image to a newly created PDF
+    const doc = new jsPDF({
+      orientation: &#39;landscape&#39;,
+      unit: &#39;px&#39;,
+      hotfixes: [&#39;px_scaling&#39;],
+    });
+    doc.addImage(
+      imgData,
+      &#39;JPEG&#39;,
+      15,
+      40,
+      spec.value.size[0],
+      spec.value.size[1]
+    );
+
+    // download the result
+    const filename = `inkmap-${new Date().toISOString().substr(0, 10)}.pdf`;
+    doc.save(filename);
+  };
+});
+</code></pre></div></div></div><div class="mt-5" id="example-06"><h2>Registering new projections</h2><p><strong>inkmap</strong> uses proj4 and allows for new projections registration.</p><p>Here's an example registering 'EPSG:2154', so it should not be downloaded with the 'Downloaded projection' predefined spec.</p><ul class="nav nav-tabs"><li class="nav-item"><a class="nav-link active" data-toggle="tab" href=".example-06-result">Result</a></li><li class="nav-item"><a class="nav-link" data-toggle="tab" href=".example-06-source">Source</a></li></ul><div class="tab-content mt-2"><div class="tab-pane example-06-result show active"><div class="row align-items-center"><print-spec class="col-8" editable="false"></print-spec><custom-button class="col-3">Generate!</custom-button></div></div><div class="tab-pane example-06-source"><pre class="rounded small"><code class="js">import { downloadBlob, print } from &#39;inkmap&#39;;
+import { registerProjection } from &#39;../../src/main&#39;;
+
+const root = document.getElementById(&#39;example-06&#39;);
+const btn = /** @type {CustomButton} */ root.querySelector(&#39;custom-button&#39;);
+const spec = /** @type {PrintSpec} */ root.querySelector(&#39;print-spec&#39;);
+
+btn.addEventListener(&#39;click&#39;, async () =&gt; {
+  // display the loading spinner
+  btn.working = true;
+
+  // registers the projection EPSG:2154
+  registerProjection({
+    name: &#39;EPSG:2154&#39;,
+    bbox: [51.56, -9.86, 41.15, 10.38],
+    proj4:
+      &#39;+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs&#39;,
+  });
+
+  // create a job, get a promise that resolves when the job is finished
+  const blob = await print(spec.value);
+
+  // hide the loading spinner
+  btn.working = false;
+
+  // download the result
+  const filename = `inkmap-${new Date().toISOString().substr(0, 10)}.png`;
+  downloadBlob(blob, filename);
+});
+</code></pre></div></div></div><div class="mt-5" id="example-07"><h2>Error handling</h2><p><strong>inkmap</strong> status observable includes a list of error objects with urls that encountered errors.</p><ul class="nav nav-tabs"><li class="nav-item"><a class="nav-link active" data-toggle="tab" href=".example-07-result">Result</a></li><li class="nav-item"><a class="nav-link" data-toggle="tab" href=".example-07-source">Source</a></li></ul><div class="tab-content mt-2"><div class="tab-pane example-07-result show active"><div class="row align-items-center"><print-spec class="col-8" editable="false" select="Error layers"></print-spec><custom-button class="col-3">Generate!</custom-button></div></div><div class="tab-pane example-07-source"><pre class="rounded small"><code class="js">import { downloadBlob, getJobStatus, queuePrint } from &#39;inkmap&#39;;
+
+const root = document.getElementById(&#39;example-07&#39;);
+const btn = /** @type {CustomButton} */ root.querySelector(&#39;custom-button&#39;);
+const spec = /** @type {PrintSpec} */ root.querySelector(&#39;print-spec&#39;);
+const errors = root.querySelector(&#39;#errors&#39;);
+
+btn.addEventListener(&#39;click&#39;, async () =&gt; {
+  // display the loading spinner
+  btn.working = true;
+
+  // create a job, get a promise that resolves with the job id
+  const jobId = await queuePrint(spec.value);
+
+  getJobStatus(jobId).subscribe((status) =&gt; {
+    // display the job progress
+    btn.progress = status.progress;
+
+    // job is finished
+    if (status.progress === 1) {
+      // hide the loading spinner
+      btn.working = false;
+
+      // display urls with errors
+      if (status.sourceLoadErrors.length &gt; 0) {
+        let errorMessage = &#39;The following layers encountered errors:&lt;br&gt;&#39;;
+        status.sourceLoadErrors.forEach((element) =&gt; {
+          errorMessage = `${errorMessage} - ${element.url}&lt;br&gt;`;
+        });
+        errors.innerHTML = errorMessage;
+      } else {
+        errors.innerHTML = &#39;&#39;;
+      }
+
+      // download the result
+      const filename = `inkmap-${new Date().toISOString().substr(0, 10)}.png`;
+      downloadBlob(status.imageBlob, filename);
+    }
+  });
+});
+</code></pre></div></div><p id="errors" class="text-danger"></p></div></div><script src="app.js"></script></body></html>
